@@ -70,6 +70,12 @@ public:
      */
     void do_messages();
 
+    void broadcast();
+
+    void removeUser();
+
+    
+
 private:
     /**
      *  Lista de clientes conectados al servidor de Chat, representados por

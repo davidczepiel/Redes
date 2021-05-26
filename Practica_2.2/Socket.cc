@@ -17,7 +17,7 @@ Socket::Socket(const char * address, const char * port):sd(-1)
     getaddrinfo(address, port, &hintsBusqueda, &resultado);
     sd=socket(AF_INET,SOCK_DGRAM,0);
 
-    sa = resultado->ai_addr;
+    sa = *resultado->ai_addr;
     sa_len = resultado->ai_addrlen;
 }
 
@@ -50,7 +50,7 @@ int Socket::send(Serializable& obj, const Socket& sock)
     //Serializar el objeto
     //Enviar el objeto binario a sock usando el socket sd
     obj.to_bin();
-    sendto(sd, obj.data(),obj.size(),0,sock.sa,sock.sa_len);
+    sendto(sd, obj.data(),obj.size(),0,&sock.sa,sock.sa_len);
 }
 
 bool operator== (const Socket &s1, const Socket &s2)
