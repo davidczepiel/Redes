@@ -18,15 +18,15 @@ void ChatMessage::to_bin()
     tmp = tmp+sizeof(type);
 
     //Metemos el nombre (este solo puede tener hasta 8 caracteres)
-    char char_ComunicacionNick[8];
-    strcpy(char_ComunicacionNick, nick.c_str());
+    char char_ComunicacionNick[8] = NULL;
+    strncpy(char_ComunicacionNick, nick.c_str(),8);
     char_ComunicacionNick[7] = '\0';
     memcpy(tmp,char_ComunicacionNick, sizeof(char_ComunicacionNick));
     tmp = tmp+(sizeof(char_ComunicacionNick));
 
     //metemos el mensage
-    char char_ComunicacionMensage[80];
-    strcpy(char_ComunicacionMensage, message.c_str());
+    char char_ComunicacionMensage[80] = NULL;
+    strncpy(char_ComunicacionMensage, message.c_str(),80);
     char_ComunicacionMensage[79]= '\0';
     memcpy(tmp,char_ComunicacionMensage,sizeof(char_ComunicacionMensage));
 
@@ -42,21 +42,16 @@ int ChatMessage::from_bin(char * bobj)
     memcpy(&type,tmp,sizeof(type));
     tmp = tmp+sizeof(type);
 
-    ////////////////REHACER
     //Metemos el nombre
-    int sizeNombre = strlen(tmp);  //Sacamos la longitud hasta un \0 pero sin contar este
-    sizeNombre++;                   //Añadimos el retorno de carro
-    nick.resize(sizeNombre);
-    memcpy(&nick[0],tmp,sizeNombre);
-    tmp = tmp+sizeof(sizeNombre);
+    char char_ComunicacionNick[8] = NULL;
+    memcpy(char_ComunicacionNick,tmp,sizeof(char_ComunicacionNick));
+    nick.append(char_ComunicacionNick);
+    tmp = tmp+sizeof(char_ComunicacionNick);
 
     //Metemos el mensage
-    int sizeMensage = strlen(tmp); //Sacamos la longitud hasta un \0 pero sin contar este
-    sizeMensage++;                  //Añadimos el retorno de carro
-    message.resize(sizeMensage);
-    memcpy(&message[0],tmp,sizeMensage);
-    tmp = tmp+sizeMensage;
-
+    char char_ComunicacionMensage[80] = NULL;
+    memcpy(char_ComunicacionMensage,tmp,sizeof(char_ComunicacionMensage));
+    message.append(char_ComunicacionMensage);
     return 0;
 }
 
@@ -64,6 +59,7 @@ int ChatMessage::from_bin(char * bobj)
 
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
+
 
 void ChatServer::do_messages()
 {
@@ -75,37 +71,60 @@ void ChatServer::do_messages()
          * para añadirlo al vector
          */
         ChatMessage receptor;
-        Socket * nuevo ;
+        Socket* nuevo ;
         socket.recv(receptor,nuevo);
 
-        clients.push_back(clients.move());
         //Recibir Mensajes en y en función del tipo de mensaje
         // - LOGIN: Añadir al vector clients
         // - LOGOUT: Eliminar del vector clients
         // - MESSAGE: Reenviar el mensaje a todos los clientes (menos el emisor)
         switch(receptor.type){
             case MessageType::LOGIN:
+                if(!alreadyConnected(nuevo)){
+                    clients.push_back(std::nuevo.move());
+                }
             break;
 
             case MessageType::LOGOUT:
-            removeUser();
+                if(removeUser(nuevo)){
+                    std::cout<<"Alguien que no estaba conectado se desconecto\n";
+                }
             break;
 
             case MessageType::MESSAGE:
-            broadcast();
+                broadcast(receptor,nuevo);
             break;
         }
     }
 }
 
-void ChatServer::broadcast()
+void ChatServer::broadcast(ChatMessage men,Socket* emisor)
 {
-
+    for(int i=0;i<clients.size();i++){
+        socket.send(men,clients[i].get());
+    }
 }
 
-void ChatServer::removeUser()
-{
 
+bool ChatServer::removeUser(Socket* user)
+{
+    for(auto it= clients.begin();i != clients.end();i++){
+        if((*it).get() == user){
+            clientes.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ChatServer::alreadyConnected(Socket* user)
+{
+    for(auto it= clients.begin();i != clients.end();i++){
+        if((*it).get() == user){
+            return true;
+        }
+    }
+    return false;
 }
 
 // -----------------------------------------------------------------------------

@@ -19,6 +19,9 @@ Socket::Socket(const char * address, const char * port):sd(-1)
 
     sa = *resultado->ai_addr;
     sa_len = resultado->ai_addrlen;
+
+    freeaddrinfo(resultado);
+
 }
 
 int Socket::recv(Serializable &obj, Socket * &sock)
@@ -58,9 +61,11 @@ bool operator== (const Socket &s1, const Socket &s2)
     //Comparar los campos sin_family, sin_addr.s_addr y sin_port
     //de la estructura sockaddr_in de los Sockets s1 y s2
     //Retornar false si alguno difiere
-    return s1.sin_family == s2.sin_family && 
-            s1.sin_addr.s_addr == s2.sin_addr.s_addr && 
-            s1.sin_port == s2.sin_port;
+    // return s1.sin_family == s2.sin_family && 
+    //         s1.sin_addr.s_addr == s2.sin_addr.s_addr && 
+    //         s1.sin_port == s2.sin_port;
+    struct sockaddr_in * a = s1;
+    return false;
 };
 
 std::ostream& operator<<(std::ostream& os, const Socket& s)

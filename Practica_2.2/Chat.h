@@ -70,11 +70,13 @@ public:
      */
     void do_messages();
 
-    void broadcast();
+    void broadcast(ChatMessage men,Socket* emisor);
 
-    void removeUser();
+    void removeUser(Socket* user);
 
-    
+    bool alreadyConnected(Socket* user);
+
+
 
 private:
     /**
