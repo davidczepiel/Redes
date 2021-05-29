@@ -70,14 +70,6 @@ public:
      */
     void do_messages();
 
-    void broadcast(ChatMessage men,Socket* emisor);
-
-    void removeUser(Socket* user);
-
-    bool alreadyConnected(Socket* user);
-
-
-
 private:
     /**
      *  Lista de clientes conectados al servidor de Chat, representados por

@@ -7,51 +7,46 @@
 
 void ChatMessage::to_bin()
 {
+    //Preparamos la zona donde almacenar los datos
     alloc_data(MESSAGE_SIZE);
     memset(_data, 0, MESSAGE_SIZE);
-
-    //Serializar los campos type, nick y message en el buffer _data
     char* tmp = _data;
 
     //Metemos el type
     memcpy(tmp,&type,sizeof(type));
     tmp = tmp+sizeof(type);
 
-    //Metemos el nombre (este solo puede tener hasta 8 caracteres)
-    char char_ComunicacionNick[8] = NULL;
-    strncpy(char_ComunicacionNick, nick.c_str(),8);
-    char_ComunicacionNick[7] = '\0';
-    memcpy(tmp,char_ComunicacionNick, sizeof(char_ComunicacionNick));
-    tmp = tmp+(sizeof(char_ComunicacionNick));
+    //Metemos el nombre 
+    memcpy(tmp,nick.c_str(), (sizeof(char)*8));
+    tmp = tmp+(sizeof(char)*8);
 
     //metemos el mensage
-    char char_ComunicacionMensage[80] = NULL;
-    strncpy(char_ComunicacionMensage, message.c_str(),80);
-    char_ComunicacionMensage[79]= '\0';
-    memcpy(tmp,char_ComunicacionMensage,sizeof(char_ComunicacionMensage));
+    memcpy(tmp,message.c_str(),(sizeof(char)*80));
 
 }
 
 int ChatMessage::from_bin(char * bobj)
 {
+    //Preparamos los datos de donde vamos a leer
     alloc_data(MESSAGE_SIZE);
     memcpy(static_cast<void *>(_data), bobj, MESSAGE_SIZE);
-  
-    char* tmp = data;
-    //Metemos el type
+    char* tmp = _data;
+
+    //Leemos el type
     memcpy(&type,tmp,sizeof(type));
     tmp = tmp+sizeof(type);
 
-    //Metemos el nombre
-    char char_ComunicacionNick[8] = NULL;
+    //Leemos el nombre
+    char char_ComunicacionNick[8] ;
     memcpy(char_ComunicacionNick,tmp,sizeof(char_ComunicacionNick));
     nick.append(char_ComunicacionNick);
     tmp = tmp+sizeof(char_ComunicacionNick);
 
-    //Metemos el mensage
-    char char_ComunicacionMensage[80] = NULL;
+    //Leemos el mensage
+    char char_ComunicacionMensage[80] ;
     memcpy(char_ComunicacionMensage,tmp,sizeof(char_ComunicacionMensage));
     message.append(char_ComunicacionMensage);
+    
     return 0;
 }
 
@@ -65,66 +60,84 @@ void ChatServer::do_messages()
 {
     while (true)
     {
-        /*
-         * NOTA: los clientes están definidos con "smart pointers", es necesario
-         * crear un unique_ptr con el objeto socket recibido y usar std::move
-         * para añadirlo al vector
-         */
+        //Preparo el mensage que en un futuro se va a mandar y me hago con el socket que se esta comunicando conmigo
         ChatMessage receptor;
-        Socket* nuevo ;
+        Socket* nuevo = (Socket*)1;
         socket.recv(receptor,nuevo);
 
-        //Recibir Mensajes en y en función del tipo de mensaje
-        // - LOGIN: Añadir al vector clients
-        // - LOGOUT: Eliminar del vector clients
-        // - MESSAGE: Reenviar el mensaje a todos los clientes (menos el emisor)
         switch(receptor.type){
-            case MessageType::LOGIN:
-                if(!alreadyConnected(nuevo)){
-                    clients.push_back(std::nuevo.move());
+
+            ///////////////////////////////////////////////
+            ///Alguien se ha entrado de la sala
+            ///////////////////////////////////////////////
+            case ChatMessage::MessageType::LOGIN : {
+                std::cout<<"CONEXION"<<std::endl;
+                //Se pasa por el vector buscando la persona en cuestion
+                auto iter = clients.begin();
+                while(iter != clients.end()){
+                    if(*iter->get() == *nuevo) break;
+                    ++iter;
                 }
+
+                if( !(iter == clients.end()) ) 
+                    std::cout<<"Alguien ya estaba en la sala ha intentado conectarse\n";
+                else{
+                    clients.push_back(std::unique_ptr<Socket>(std::move(nuevo)));
+                    receptor.message = receptor.nick+" ha entrado a la sala";
+                    std::cout<<receptor.nick<<" Se ha conectado"<<std::endl;
+                    receptor.nick = "SERVER";
+                    for(auto it = clients.begin(); it!=clients.end();++it)
+                        socket.send(receptor,*it->get());
+                }
+                std::cout<<"Hay tantas personas conectadas: "<< clients.size()<<std::endl;
+
+            }
             break;
 
-            case MessageType::LOGOUT:
-                if(removeUser(nuevo)){
+            ///////////////////////////////////////////////
+            ///Alguien se ha salido de la sala
+            ///////////////////////////////////////////////
+            case ChatMessage::MessageType::LOGOUT:{
+                std::cout<<"DESCONEXION"<<std::endl;
+                //Se pasa por el vector buscando la persona en cuestion
+                auto iter = clients.begin();
+                while(iter != clients.end()){
+                    if(*iter->get() == *nuevo) break;
+                    ++iter;
+                }
+
+                if(iter == clients.end()) 
                     std::cout<<"Alguien que no estaba conectado se desconecto\n";
+                else{
+                    clients.erase(iter);
+                    receptor.message = receptor.nick+" ha salido de la sala";
+                    receptor.nick = "SERVER";
+                    for(auto it = clients.begin(); it!=clients.end();++it)
+                        socket.send(receptor,*it->get());
                 }
+                std::cout<<"Hay "<< clients.size()<< " personas conectadas: "<< std::endl;
+            }
             break;
 
-            case MessageType::MESSAGE:
-                broadcast(receptor,nuevo);
+            ///////////////////////////////////////////////
+            ///Alguien se ha mandado algo
+            ///////////////////////////////////////////////
+            case ChatMessage::MessageType::MESSAGE:{
+                std::cout<<"MENSAGE"<<std::endl;
+                for(auto it = clients.begin(); it!=clients.end();++it)
+                    if(!(*it->get() == *nuevo))  
+                        socket.send(receptor,*it->get());                 
+            }
+            break;
+
+            ///////////////////////////////////////////////
+            ///Alguien se ha mandado algo que no se puede procesar
+            ///////////////////////////////////////////////      
+            default:
+                std::cout<<"Se me ha mandado un tipo de mensage que no se procesar"<<std::endl;
             break;
         }
     }
-}
-
-void ChatServer::broadcast(ChatMessage men,Socket* emisor)
-{
-    for(int i=0;i<clients.size();i++){
-        socket.send(men,clients[i].get());
-    }
-}
-
-
-bool ChatServer::removeUser(Socket* user)
-{
-    for(auto it= clients.begin();i != clients.end();i++){
-        if((*it).get() == user){
-            clientes.erase(it);
-            return true;
-        }
-    }
-    return false;
-}
-
-bool ChatServer::alreadyConnected(Socket* user)
-{
-    for(auto it= clients.begin();i != clients.end();i++){
-        if((*it).get() == user){
-            return true;
-        }
-    }
-    return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -153,14 +166,21 @@ void ChatClient::input_thread()
 {
     while (true)
     {
-        // Leer stdin con std::getline
-        // Enviar al servidor usando socket
+        //Leemos de consola 
         std::string contenido;
         std::getline(std::cin,contenido);
+
+        //Si hay que desconectarse terminamos
+        if(contenido == "q"){
+            std::cout<<"NOS DESCONECTAMOS"<<std::endl;
+            logout();
+            break;
+        }
+
+        //Mandamos el mensage
         ChatMessage men(nick, contenido);
         men.type = ChatMessage::MESSAGE;
         socket.send(men,socket);
-
     }
 }
 
@@ -168,11 +188,12 @@ void ChatClient::net_thread()
 {
     while(true)
     {
-        //Recibir Mensajes de red
-        //Mostrar en pantalla el mensaje de la forma "nick: mensaje"
+        //Recibimos un mensage desde el servidor
         ChatMessage receptor;
-        socket.recv(receptor,nullptr);
-        std::cout<<socket<<" nick: "<<receptor.nick<<" "<<receptor.message<<std::endl;
+        socket.recv(receptor);
+
+        //Mostramos autor y contenido
+        std::cout<<receptor.nick<<": "<<receptor.message<<std::endl;
     }
 }
 

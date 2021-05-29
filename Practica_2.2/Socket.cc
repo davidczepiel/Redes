@@ -5,23 +5,22 @@
 
 Socket::Socket(const char * address, const char * port):sd(-1)
 {
-    //Construir un socket de tipo AF_INET y SOCK_DGRAM usando getaddrinfo.
-    //Con el resultado inicializar los miembros sd, sa y sa_len de la clase
+    //Preparamos las estructuras que usaremos para crear el socket
     struct addrinfo hintsBusqueda;
     struct addrinfo * resultado;
     memset((void *)&hintsBusqueda,0,sizeof(struct addrinfo));
-
     hintsBusqueda.ai_family = AF_INET;  
     hintsBusqueda.ai_socktype = SOCK_DGRAM;
 
-    getaddrinfo(address, port, &hintsBusqueda, &resultado);
-    sd=socket(AF_INET,SOCK_DGRAM,0);
 
+    getaddrinfo(address, port, &hintsBusqueda, &resultado);
+    sd=socket(resultado->ai_family, resultado->ai_socktype,0);
+
+
+    //Nos quedamos con lo que nos interesa y limpiamos
     sa = *resultado->ai_addr;
     sa_len = resultado->ai_addrlen;
-
     freeaddrinfo(resultado);
-
 }
 
 int Socket::recv(Serializable &obj, Socket * &sock)
@@ -50,22 +49,19 @@ int Socket::recv(Serializable &obj, Socket * &sock)
 
 int Socket::send(Serializable& obj, const Socket& sock)
 {
-    //Serializar el objeto
-    //Enviar el objeto binario a sock usando el socket sd
+    //Se transforma el objeto serializable a un formato con el que se pueda trabajar
+    //Se manda el objeto
     obj.to_bin();
     sendto(sd, obj.data(),obj.size(),0,&sock.sa,sock.sa_len);
 }
 
 bool operator== (const Socket &s1, const Socket &s2)
 {
-    //Comparar los campos sin_family, sin_addr.s_addr y sin_port
-    //de la estructura sockaddr_in de los Sockets s1 y s2
-    //Retornar false si alguno difiere
-    // return s1.sin_family == s2.sin_family && 
-    //         s1.sin_addr.s_addr == s2.sin_addr.s_addr && 
-    //         s1.sin_port == s2.sin_port;
-    struct sockaddr_in * a = s1;
-    return false;
+    //Se transforma el sockaddr a un formato con el que se pueda trabajar y se comprueba
+    struct sockaddr_in * a = (struct sockaddr_in*) &s1.sa;
+    struct sockaddr_in * b = (struct sockaddr_in*) &s2.sa;
+
+    return a->sin_family == b->sin_family && a->sin_port == b->sin_port && a->sin_addr.s_addr == b->sin_addr.s_addr;
 };
 
 std::ostream& operator<<(std::ostream& os, const Socket& s)

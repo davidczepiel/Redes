@@ -5,15 +5,15 @@ OBJ = Socket.o Chat.o
 LIBS=-lpthread
 
 %.o: %.cc $(DEPS)
-	$(CC) -g -c -o $@ $< $(CFLAGS)
+	$(CC) -std=c++11 -g -c -o $@ $< $(CFLAGS)
 
 all: cs cc
 
 cs: $(OBJ) ChatServer.o
-	g++ -o $@ $^ $(CFLAGS) $(LIBS)
+	g++ -std=c++11 -o $@ $^ $(CFLAGS) $(LIBS)
 
 cc: $(OBJ) ChatClient.o
-	g++ -o $@ $^ $(CFLAGS) $(LIBS)
+	g++ -std=c++11 -o $@ $^ $(CFLAGS) $(LIBS)
 
 
 .PHONY: clean
