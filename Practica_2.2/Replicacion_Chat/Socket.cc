@@ -12,12 +12,22 @@ Socket::Socket(const char * address, const char * port):sd(-1)
     hintsBusqueda.ai_family = AF_INET;  
     hintsBusqueda.ai_socktype = SOCK_DGRAM;
 
+    //Sacamos la info de la direccion que se nos ha especificado
+    int infoDir = getaddrinfo(address, port, &hintsBusqueda, &resultado);
+    if(infoDir != 0)
+    {
+        std::cerr<<"Error al sacar la direccion del server solicitada\n";
+        exit(-1);
+    }
 
-    getaddrinfo(address, port, &hintsBusqueda, &resultado);
+    //Creamos el socket que se ajuste a nuestra peticion
     sd=socket(resultado->ai_family, resultado->ai_socktype,0);
+    if(sd == -1){
+        std::cerr<<"Error al crear el socket solicitado\n";
+        exit(-1); 
+    }
 
-
-    //Nos quedamos con lo que nos interesa y limpiamos
+    //Una vez hecho todo, nos quedamos con lo que nos interesa y limpiamos
     sa = *resultado->ai_addr;
     sa_len = resultado->ai_addrlen;
     freeaddrinfo(resultado);
@@ -52,7 +62,11 @@ int Socket::send(Serializable& obj, const Socket& sock)
     //Se transforma el objeto serializable a un formato con el que se pueda trabajar
     //Se manda el objeto
     obj.to_bin();
-    sendto(sd, obj.data(),obj.size(),0,&sock.sa,sock.sa_len);
+    int bytesMandados = sendto(sd, obj.data(),obj.size(),0,&sock.sa,sock.sa_len);
+
+    //Si ha habido error, informamos, si se ha mandado correctamente devolvemos 0
+    if(bytesMandados == -1) return -1;
+    else return 0;
 }
 
 bool operator== (const Socket &s1, const Socket &s2)
@@ -61,7 +75,9 @@ bool operator== (const Socket &s1, const Socket &s2)
     struct sockaddr_in * a = (struct sockaddr_in*) &s1.sa;
     struct sockaddr_in * b = (struct sockaddr_in*) &s2.sa;
 
-    return a->sin_family == b->sin_family && a->sin_port == b->sin_port && a->sin_addr.s_addr == b->sin_addr.s_addr;
+    return a->sin_family == b->sin_family && 
+           a->sin_port == b->sin_port && 
+           a->sin_addr.s_addr == b->sin_addr.s_addr;
 };
 
 std::ostream& operator<<(std::ostream& os, const Socket& s)

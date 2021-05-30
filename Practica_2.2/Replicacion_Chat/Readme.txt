@@ -1,0 +1,1 @@
+En esta parte de la práctica no he hecho subdivisiones en:Ej1,Ej2... debido a que en cada apartado se construye sobre el anterior.

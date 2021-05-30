@@ -62,13 +62,13 @@ void ChatServer::do_messages()
     {
         //Preparo el mensage que en un futuro se va a mandar y me hago con el socket que se esta comunicando conmigo
         ChatMessage receptor;
-        Socket* nuevo = (Socket*)1;
+        Socket* nuevo = (Socket*)&receptor;    //Hago que el puntero apunte a cualquier cosa para que el recv me cree un nuevo socket
         socket.recv(receptor,nuevo);
 
         switch(receptor.type){
 
             ///////////////////////////////////////////////
-            ///Alguien se ha entrado de la sala
+            ///Alguien ha entrado de la sala
             ///////////////////////////////////////////////
             case ChatMessage::MessageType::LOGIN : {
                 std::cout<<"CONEXION"<<std::endl;
@@ -78,18 +78,19 @@ void ChatServer::do_messages()
                     if(*iter->get() == *nuevo) break;
                     ++iter;
                 }
-
+                //En caso de que esa persona ya estuviera conectada a la sala
                 if( !(iter == clients.end()) ) 
-                    std::cout<<"Alguien ya estaba en la sala ha intentado conectarse\n";
+                    std::cout<<"Alguien que ya estaba en la sala ha intentado reconectarse\n";
+                //En caso de que no estuviera conectada
                 else{
+                    //Avisamos a todos los clientes de esto (esto lo informa el server)
                     clients.push_back(std::unique_ptr<Socket>(std::move(nuevo)));
                     receptor.message = receptor.nick+" ha entrado a la sala";
-                    std::cout<<receptor.nick<<" Se ha conectado"<<std::endl;
                     receptor.nick = "SERVER";
                     for(auto it = clients.begin(); it!=clients.end();++it)
                         socket.send(receptor,*it->get());
                 }
-                std::cout<<"Hay tantas personas conectadas: "<< clients.size()<<std::endl;
+                std::cout<<"Hay "<< clients.size()<< " personas conectadas"<< std::endl;
 
             }
             break;
@@ -106,32 +107,37 @@ void ChatServer::do_messages()
                     ++iter;
                 }
 
+                //En caso de que no se halla encontrado a quien se quiere desconectar
                 if(iter == clients.end()) 
                     std::cout<<"Alguien que no estaba conectado se desconecto\n";
+                //Eliminamos a quien se quiere desconectar
                 else{
+                    //Avisamos a los clientes de esto
                     clients.erase(iter);
                     receptor.message = receptor.nick+" ha salido de la sala";
                     receptor.nick = "SERVER";
                     for(auto it = clients.begin(); it!=clients.end();++it)
                         socket.send(receptor,*it->get());
                 }
-                std::cout<<"Hay "<< clients.size()<< " personas conectadas: "<< std::endl;
+                std::cout<<"Hay "<< clients.size()<< " personas conectadas"<< std::endl;
             }
             break;
 
             ///////////////////////////////////////////////
-            ///Alguien se ha mandado algo
+            ///Alguien ha mandado algo
             ///////////////////////////////////////////////
             case ChatMessage::MessageType::MESSAGE:{
+                //Mandamos el mensage en cuestion a todos los conectados a la sala
                 std::cout<<"MENSAGE"<<std::endl;
                 for(auto it = clients.begin(); it!=clients.end();++it)
+                    //Mandamos a todos los usuarios menos a aquel que ha mandado el mensage
                     if(!(*it->get() == *nuevo))  
                         socket.send(receptor,*it->get());                 
             }
             break;
 
             ///////////////////////////////////////////////
-            ///Alguien se ha mandado algo que no se puede procesar
+            ///Alguien ha mandado algo que no se puede procesar
             ///////////////////////////////////////////////      
             default:
                 std::cout<<"Se me ha mandado un tipo de mensage que no se procesar"<<std::endl;

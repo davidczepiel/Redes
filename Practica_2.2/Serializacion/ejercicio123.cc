@@ -22,26 +22,32 @@ public:
 
     void to_bin()
     {
-        //
+        //Preparamos el contenedor de nuestros datos
         int size = (MAX_NAME*sizeof(char)) + (2* sizeof(x));
         alloc_data(size);
         char* tmp= _data;
 
+        //Metemos el nombre
         memcpy(tmp,name, MAX_NAME*sizeof(char));
         tmp = tmp+(MAX_NAME*sizeof(char));
+        //La X
         memcpy(tmp,&x,sizeof(x));
         tmp = tmp+sizeof(x);
+        //La Y
         memcpy(tmp,&y,sizeof(y));
 
     }
 
     int from_bin(char * data)
     {
+        //Tomamos los datos y leemos el nombre
         char* tmp = data;
         memcpy(name,tmp, MAX_NAME*sizeof(char));
         tmp = tmp+(MAX_NAME*sizeof(char));
+        //La X
         memcpy(&x,tmp,sizeof(x));
         tmp = tmp+sizeof(x);
+        //La Y
         memcpy(&y,tmp,sizeof(y));
 
         return 0;
@@ -94,7 +100,6 @@ int main(int argc, char **argv)
     // 5. Mostrar el contenido de one_r
     std::cout<<"Soy el lector despues de leer\n Nombre= "<<one_r.getName()<<" X= "<<one_r.getX()<<" Y= "<<one_r.getY()<< std::endl;
     free(lector);
-
     return 0;
 }
 
